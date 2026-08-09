@@ -1,4 +1,3 @@
-
 // 工具函数
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -17,97 +16,109 @@ function clearForm() {
 // 渲染留言列表
 async function renderList() {
   const list = document.querySelector('.list');
-  
-  // 从 Supabase 查询所有留言，按 id 降序 (最新的在前)
-  const { data: msgs, error } = await db
-    .from('messages')
-    .select('*')
-    .order('id', { ascending: false });
 
-  if (error) {
-    console.error('数据加载失败:', error);
-    list.innerHTML = `<div class="empty-tip">⚠️ 加载留言失败，请检查网络或配置。</div>`;
-    return;
-  }
-
-  if (!msgs || msgs.length === 0) {
-    list.innerHTML = '<div class="empty-tip">✨ 还没有留言，快来抢沙发吧~</div>';
-    return;
-  }
-
-  list.innerHTML = msgs.map(m => {
-    return `
-      <div class="item" data-id="${m.id}">
-        <div class="top">
-          <div>
-            <img src="img/bg2.png" alt="">
-            <div>${escapeHtml(m.name)}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span>${escapeHtml(m.time)}</span>
-            <button class="delete-btn" data-id="${m.id}">删除</button>
-          </div>
-        </div>
-        <div class="btm">${escapeHtml(m.content)}</div>
-      </div>`;
-  }).join('');
-
-  // 为所有删除按钮绑定事件 (替换 onclick 属性)
-  document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const id = Number(this.dataset.id);
-      deleteMsg(id);
+  try {
+    const res = await fetch(API_URL + '/messages?select=*&order=id.desc', {
+      headers: HEADERS
     });
-  });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || '请求失败');
+    }
+
+    const msgs = await res.json();
+
+    if (!msgs || msgs.length === 0) {
+      list.innerHTML = '<div class="empty-tip">还没有留言，快来抢沙发吧~</div>';
+      return;
+    }
+
+    list.innerHTML = msgs.map(m => {
+      return `
+        <div class="item" data-id="${m.id}">
+          <div class="top">
+            <div>
+              <img src="img/bg2.png" alt="">
+              <div>${escapeHtml(m.name)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span>${escapeHtml(m.time)}</span>
+              <button class="delete-btn" data-id="${m.id}">删除</button>
+            </div>
+          </div>
+          <div class="btm">${escapeHtml(m.content)}</div>
+        </div>`;
+    }).join('');
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        deleteMsg(Number(this.dataset.id));
+      });
+    });
+  } catch (err) {
+    console.error('数据加载失败:', err);
+    list.innerHTML = '<div class="empty-tip">加载留言失败，请检查网络或配置。</div>';
+  }
 }
 
 // 保存留言
 async function saveMsg(name, content) {
   const now = new Date().toLocaleString('zh-CN', { hour12: false });
-  const { error } = await db
-    .from('messages')
-    .insert([{ name, content, time: now }]);
 
-  if (error) {
-    console.error('发布失败:', error);
+  try {
+    const res = await fetch(API_URL + '/messages', {
+      method: 'POST',
+      headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ name, content, time: now })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || '请求失败');
+    }
+    return true;
+  } catch (err) {
+    console.error('发布失败:', err);
     alert('留言发布失败，请稍后再试。');
     return false;
   }
-  return true;
 }
 
 // 删除留言
 async function deleteMsg(id) {
-  const card = document.querySelector(`.item[data-id="${id}"]`);
+  const card = document.querySelector('.item[data-id="' + id + '"]');
   if (card) {
     card.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
     card.style.opacity = '0';
     card.style.transform = 'translateX(30px)';
   }
 
-  const { error } = await db
-    .from('messages')
-    .delete()
-    .eq('id', id);
+  try {
+    const res = await fetch(API_URL + '/messages?id=eq.' + id, {
+      method: 'DELETE',
+      headers: HEADERS
+    });
 
-  if (error) {
-    console.error('删除失败:', error);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || '请求失败');
+    }
+
+    if (card) {
+      setTimeout(() => {
+        card.remove();
+        if (document.querySelectorAll('.list .item').length === 0) {
+          renderList();
+        }
+      }, 300);
+    } else {
+      renderList();
+    }
+  } catch (err) {
+    console.error('删除失败:', err);
     alert('删除留言失败，请稍后再试。');
-    renderList(); // 删除失败时刷新列表以恢复状态
-    return;
-  }
-
-  // 删除成功后移除 DOM 元素
-  if (card) {
-    setTimeout(() => {
-      card.remove();
-      // 如果列表为空，重新渲染以显示空状态
-      if (document.querySelectorAll('.item').length === 0) {
-        renderList();
-      }
-    }, 300);
-  } else {
     renderList();
   }
 }
@@ -128,7 +139,6 @@ document.querySelector('.OK').onclick = async function() {
   if (success) {
     clearForm();
     await renderList();
-    // 滚动到留言板顶部，方便看到最新消息
     document.querySelector('.list').scrollTop = 0;
   }
 };
