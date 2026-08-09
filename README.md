@@ -16,7 +16,7 @@
 
 - HTML / CSS / JavaScript
 - [Supabase](https://supabase.com) — 后端数据库
-- GitHub Pages — 静态托管
+- GitHub Pages — 静态托管 也可以托管到别处，这里不作教程
 
 ## 项目结构
 
@@ -55,6 +55,8 @@ CREATE POLICY "允许所有人删除" ON messages FOR DELETE USING (true);
 2. 将 `js/config.js` 中的 `SUPABASE_URL` 和 `SUPABASE_ANON_KEY` 替换为你的项目密钥。
 
 3. 将项目推送到 GitHub 仓库，在 Settings → Pages 中启用 GitHub Pages。
+
+4. 一个属于你自己的在线留言板就完成啦。
 
 ## 许可
 
