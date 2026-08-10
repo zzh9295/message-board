@@ -2,6 +2,8 @@
 
 一个基于 Supabase 的在线留言板，支持多人实时留言、删除，部署于 GitHub Pages。
 
+[在线预览](https://zzh9295.github.io/message-board/)
+
 ![效果图](img/bg3.png)
 
 ## 功能
@@ -23,7 +25,7 @@
 ```
 ├── index.html       # 主页面
 ├── css/
-│   └── style.css    # 样式
+│   └ ── style.css    # 样式
 ├── js/
 │   ├── config.js    # Supabase 配置（需填写自己的密钥）
 │   └── main.js      # 业务逻辑
@@ -38,6 +40,7 @@
 1. 在 [Supabase](https://supabase.com) 创建项目，执行建表 SQL：
 
 ```sql
+// 创建留言表
 CREATE TABLE messages (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name TEXT NOT NULL,
@@ -45,8 +48,10 @@ CREATE TABLE messages (
   time TEXT NOT NULL
 );
 
+// 启用行级安全策略
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
+// 允许所有人查询、插入、删除留言
 CREATE POLICY "允许所有人读取" ON messages FOR SELECT USING (true);
 CREATE POLICY "允许所有人写入" ON messages FOR INSERT WITH CHECK (true);
 CREATE POLICY "允许所有人删除" ON messages FOR DELETE USING (true);
